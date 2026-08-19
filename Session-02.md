@@ -1,5 +1,139 @@
 
+# Operating System — Basic Concepts
 
+## What is an Operating System?
+
+An **Operating System (OS)** is system software that acts as a bridge between **users, applications, and hardware**.
+
+```text
+        USER
+          │
+          ▼
+    APPLICATION
+          │
+          ▼
+   OPERATING SYSTEM
+          │
+          ▼
+       HARDWARE
+
+<img width="697" height="605" alt="image" src="https://github.com/user-attachments/assets/9a0944b8-3785-4c4d-b8bc-4538ef3f893b" />
+
+```
+
+### Simple Example
+
+When you open Chrome:
+
+```text
+Chrome
+  │
+  │ Needs CPU, RAM, Disk, Network
+  ▼
+Operating System
+  │
+  ▼
+Hardware
+```
+
+Applications do not directly manage hardware. The **OS manages hardware resources and provides them to applications**.
+
+---
+
+## Core Responsibilities of an OS
+
+```text
+                 OPERATING SYSTEM
+                        │
+       ┌────────────────┼────────────────┐
+       ▼                ▼                ▼
+   Processes          Memory           Files
+       │                │                │
+       ▼                ▼                ▼
+      CPU              RAM              Disk
+
+       ┌────────────────┼────────────────┐
+       ▼                ▼
+   Networking        Security
+       │                │
+       ▼                ▼
+      NIC        Users / Permissions
+```
+
+### 1. Process Management
+
+Manages running programs and allocates CPU resources.
+
+```text
+Chrome
+VS Code
+Terminal
+Docker
+   │
+   ▼
+Operating System
+   │
+   ▼
+CPU
+```
+
+### 2. Memory Management
+
+Allocates and manages RAM for applications.
+
+```text
+16 GB RAM
+   │
+   ▼
+Operating System
+   ├── Chrome
+   ├── VS Code
+   ├── Docker
+   └── Other Processes
+```
+
+---
+
+# Types of Operating Systems
+
+```text
+Operating Systems
+│
+├── Desktop
+│   ├── Windows
+│   ├── macOS
+│   └── Linux
+│
+├── Server
+│   ├── Linux
+│   └── Windows Server
+│
+├── Mobile
+    ├── Android
+    └── iOS
+
+```
+---
+
+# DevOps Perspective
+
+For DevOps, **Linux is one of the most important operating systems to understand**.
+
+Linux is widely used for:
+
+```text
+Linux
+ ├── Cloud Servers
+ ├── Web Servers
+ ├── Containers
+ ├── Kubernetes Nodes
+ ├── CI/CD Agents
+ └── DevOps Tools
+```
+
+> **An Operating System manages hardware resources and provides a platform for applications to run.**
+
+This is the fundamental concept to understand before moving into **Linux**.
 
 
 
