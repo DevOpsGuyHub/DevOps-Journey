@@ -16,7 +16,7 @@ An **Operating System (OS)** is system software that acts as a bridge between **
           │
           ▼
        HARDWARE
-
+---
 <img width="697" height="605" alt="image" src="https://github.com/user-attachments/assets/9a0944b8-3785-4c4d-b8bc-4538ef3f893b" />
 
 ```
