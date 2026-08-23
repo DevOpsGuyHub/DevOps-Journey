@@ -178,6 +178,9 @@ If your private key is compromised, anyone holding it can authenticate as you on
 **Learning path for freshers:**
 ```
 ssh → ssh-keygen → public key → private key → authorized_keys
+
+
+ssh <UserName>@<Public-IP> ---------- Username + Password
 ```
 
 
@@ -278,4 +281,4 @@ Application (listening on that port) → handles the request
 | **Security Group** | The guard standing outside (cloud firewall) |
 | **Inbound** | Traffic coming in |
 | **Outbound** | Traffic going out |
-| **Stateful** | Inbound allowed → reply (Outbound) auto-allowed |
+
