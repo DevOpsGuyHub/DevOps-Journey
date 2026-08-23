@@ -1,4 +1,4 @@
-# SSH Authentication in Linux
+# 1. SSH Authentication in Linux
 
 Authentication answers one question: **"Are you really who you claim to be?"**
 
@@ -184,7 +184,12 @@ ssh → ssh-keygen → public key → private key → authorized_keys
 
 
 
-# Ports & Security Groups — Simple Notes
+
+
+
+
+
+# 2 .Ports & Security Groups — Simple Notes
 
 ## 1. What is a Port?
 
