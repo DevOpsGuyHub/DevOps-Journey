@@ -1,9 +1,3 @@
-
-
-
-
-
-
 # 2 .Ports & Security Groups — Simple Notes
 
 ## 1. What is a Port?
