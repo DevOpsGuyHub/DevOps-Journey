@@ -11,18 +11,18 @@ Root = Full Control
 ```
 
 ## Non-Root User
-A **regular user** — the kind of account you normally log in with (e.g. `rahul`, `priya`).
+A **regular user** — the kind of account you normally log in with (e.g. `USER`, `priya`).
 
 - UID: `1000+` (typically)
-- Can manage their own files (e.g. `/home/rahul/`) and run their own programs
+- Can manage their own files (e.g. `/home/USER/`) and run their own programs
 - **Cannot** make system-wide changes unless explicitly given permission
 
 **Example — permission denied:**
 ```bash
-rahul@server:~$ rm /etc/important-config.txt
+USER@server:~$ rm /etc/important-config.txt
 Permission denied
 ```
-This fails because `rahul` is a non-root user and doesn't have rights to touch files under `/etc/`.
+This fails because `USER` is a non-root user and doesn't have rights to touch files under `/etc/`.
 
 ---
 
