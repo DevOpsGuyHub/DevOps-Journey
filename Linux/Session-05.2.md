@@ -311,7 +311,6 @@ Owner  → read + write + execute
 Group  → no access
 Others → no access
 ```
-
 ---
 
 ## `600`
