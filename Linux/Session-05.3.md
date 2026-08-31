@@ -179,7 +179,6 @@ To remove the package and its configuration files:
 ```bash
 sudo apt purge nginx
 ```
-
 ---
 
 ## Search for a Package
