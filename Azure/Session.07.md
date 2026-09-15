@@ -31,7 +31,7 @@
 
  The organization is responsible for purchasing and maintaining:
 
- - Physical servers
+- Physical servers
 - Storage systems
 - Networking equipment
 - Firewalls
