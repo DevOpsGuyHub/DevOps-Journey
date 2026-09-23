@@ -1175,5 +1175,3 @@ SaaS
        ↓
 15 → Interview Revision
 ```
-
-> **Teaching principle:** Don't start with definitions. Start with the **problem**, then introduce the Azure service that solves it.
