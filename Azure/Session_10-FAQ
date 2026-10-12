@@ -1,0 +1,111 @@
+# Azure Networking — Question
+
+**Basic Questions**
+
+1. What is Azure Networking, and why is it important?
+2. What is IPv4, and how is an IPv4 address structured?
+3. How many bits are there in an IPv4 address?
+4. What is the difference between a public IP address and a private IP address?
+5. What are the three standard private IPv4 address ranges?
+6. What is an Azure Virtual Network (VNet)?
+7. What is a subnet, and why do we divide a VNet into subnets?
+8. What is CIDR notation?
+9. What does `10.0.1.0/24` represent?
+10. What is a Network Interface (NIC) in Azure?
+11. How does a NIC connect a virtual machine to a VNet?
+12. What is a Network Security Group (NSG)?
+13. What is the purpose of an Azure route table?
+14. What is a User-Defined Route (UDR)?
+15. What is the difference between routing and traffic filtering?
+16. What is the difference between a route table and a UDR?
+17. Can a virtual machine communicate using a private IP address without having a public IP?
+18. Does assigning a public IP address automatically make a virtual machine accessible from the internet?
+19. How many IPv4 addresses does Azure reserve in each subnet?
+20. What is the difference between static and dynamic private IP allocation?
+
+Intermediate Questions
+
+1. Explain how a VNet, subnet, NIC, and private IP address work together.
+2. What is the difference between a VNet address space and a subnet address range?
+3. How would you calculate the total number of addresses in a `/24` subnet?
+4. How many usable IPv4 addresses are available in an Azure `/26` subnet?
+5. Why is IP address planning important before connecting an Azure VNet to an on-premises network?
+6. What problems can occur when two connected networks have overlapping IP address ranges?
+7. What is the difference between a subnet boundary and a security boundary?
+8. Can two virtual machines in the same subnet have different NSG policies?
+9. Where can an NSG be associated in Azure?
+10. What are the main components of an NSG security rule?
+11. How does NSG rule priority work?
+12. What does it mean that an NSG is stateful?
+13. What is the difference between an NSG and Azure Firewall?
+14. What are Azure system routes?
+15. What is the default route `0.0.0.0/0`?
+16. What is the longest prefix match principle in IP routing?
+17. How does Azure determine which route to use when multiple routes match a destination?
+18. What is the difference between a public IP address and Network Address Translation (NAT)?
+19. How can an Azure VM access the internet without having its own public IP address?
+20. What is the difference between Site-to-Site VPN and ExpressRoute at a high level?
+
+## Set 3: Advanced and Tough Questions
+
+1. A VNet has the address space `10.0.0.0/16`. Explain how you would divide it into web, application, and database subnets without overlapping ranges.
+2. Why does a `/24` subnet provide 256 total IPv4 addresses but only 251 usable addresses in Azure?
+3. How would you calculate the smallest suitable subnet for an application that requires 100 usable IPv4 addresses?
+4. Why can a VM have a valid private IP address but still be unable to communicate with another VM?
+5. Explain the difference between IP addressing, routing, and network security filtering using a practical example.
+6. A VM has two NICs connected to different subnets. Does traffic automatically move between those subnets? Explain.
+7. How can multiple NICs affect routing and connectivity in a virtual machine?
+8. What happens when a UDR sends traffic to a virtual appliance that is unavailable?
+9. How would you force traffic from an application subnet through Azure Firewall?
+10. Why is a UDR not a replacement for an NSG or firewall?
+11. A route table contains `10.0.0.0/16` and `10.0.2.0/24`. Which route is more specific for destination `10.0.2.4`, and why?
+12. How do effective routes help diagnose Azure network connectivity problems?
+13. How would you investigate a case where an NSG allows traffic but the connection still fails?
+14. How can an incorrect default route affect outbound internet connectivity?
+15. What networking considerations are important when connecting an Azure VNet to an on-premises network?
+16. Why can overlapping CIDR ranges cause problems with VNet peering or VPN connectivity?
+17. How would you design network segmentation for a three-tier application?
+18. What are the limitations of relying only on subnet separation to secure a database?
+19. How would you troubleshoot asymmetric routing in a network that uses an Azure Firewall or virtual appliance?
+20. How can Azure NAT Gateway provide outbound connectivity without assigning public IP addresses to individual VMs?
+
+## Set 4: Scenario-Based Questions
+
+1. A web VM at `10.0.1.4` cannot connect to a database VM at `10.0.2.4`. What would you check, and in what order?
+2. Two VMs are in the same VNet but cannot communicate. What are the possible causes?
+3. A VM has a public IP address, but users cannot access its website. How would you troubleshoot the issue?
+4. A VM can communicate with other VMs in its subnet but cannot reach a destination in another subnet. What would you investigate?
+5. An NSG allows TCP port `443`, but the application is still unreachable. What could be wrong?
+6. A database must accept connections only from the application subnet. How would you implement this requirement?
+7. Your organization wants all outbound application traffic inspected by Azure Firewall. How would you configure the routing and security controls?
+8. An Azure VNet and an on-premises network both use `10.0.0.0/16`. What problems could arise when connecting them?
+9. A VM cannot access the internet, although its private IP configuration is correct. What Azure networking components would you inspect?
+10. An application subnet has a UDR pointing to `10.0.0.4` as a virtual appliance. Traffic stops after the route is added. How would you troubleshoot it?
+11. A security team wants web servers to accept HTTPS from the internet but database servers to remain private. How would you design the subnets, IP addressing, and NSG rules?
+12. A route table contains a default route through Azure Firewall, but a more specific route exists for a destination. How would you determine which route is selected?
+13. A VM's private IP address changes after a networking or resource lifecycle operation. How would you investigate and prevent unexpected address changes?
+14. Your team needs to connect two VNets securely. What factors would you evaluate before choosing VNet peering or VPN connectivity?
+15. An application works from one subnet but fails from another subnet. How would you compare their effective routes and NSG rules?
+16. A VM can send requests to a destination, but the responses never arrive. What routing, firewall, or application issues could explain this?
+17. You need to design address ranges for development, testing, and production VNets that may later be connected. How would you plan the CIDR ranges?
+18. A company wants private outbound internet access for many VMs without assigning a public IP to each VM. Which Azure service would you consider, and what would you configure?
+19. Azure Network Watcher reports that traffic is blocked. How would you use this information to identify the responsible security rule?
+20. A network change causes several applications to lose connectivity. How would you isolate whether the issue is related to routes, NSGs, IP addressing, or the application itself?
+
+## Set 5: Expert-Level Design Questions
+
+1. Design a secure Azure network architecture for a three-tier application with public web access, private application servers, and private database servers.
+2. Explain how you would plan CIDR ranges across multiple VNets, Azure regions, and on-premises networks to avoid address overlap.
+3. Describe how Azure selects routes when system routes, UDRs, and routes learned through gateways are present.
+4. Explain how longest prefix matching affects traffic forwarding when multiple destination prefixes overlap.
+5. Design a hub-and-spoke network in which spoke-to-spoke and internet-bound traffic must pass through a centralized security appliance.
+6. How would you implement defense in depth using NSGs, Azure Firewall, route tables, and private IP addressing?
+7. Explain the relationship between effective routes, effective security rules, and end-to-end connectivity.
+8. How would you troubleshoot an application that has correct IP addressing and NSG rules but still cannot communicate across VNets?
+9. Design a hybrid connectivity architecture for an organization that needs reliable private connectivity between Azure and its on-premises data center.
+10. How would you decide between Azure Firewall, NSGs, NAT Gateway, VPN Gateway, and VNet peering for a given network requirement?
+11. Explain how subnet sizing affects future scalability, Azure-reserved addresses, and service-specific subnet requirements.
+12. How would you diagnose asymmetric routing when traffic passes through a stateful firewall or network virtual appliance?
+13. Design a network architecture that allows outbound internet access while preventing unsolicited inbound internet connections to backend VMs.
+14. How would you investigate a network outage after a UDR or NSG change without making unnecessary production changes?
+15. Explain how you would validate routing, security, and connectivity before deploying a production application in Azure.
