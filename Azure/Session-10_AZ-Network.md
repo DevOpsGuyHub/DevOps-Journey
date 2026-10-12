@@ -88,7 +88,7 @@ between networks.
 **Azure use:** A VNet is configured with address space, and its subnets
 allocate address ranges from that space.
 
-![Uploading image.png…]()
+<img width="641" height="599" alt="image" src="https://github.com/user-attachments/assets/764b27eb-58ae-4143-9c8d-932e5c03c2b8" />
 
 
 ## 3. VNet --- Azure Virtual Network
