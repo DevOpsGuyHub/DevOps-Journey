@@ -88,6 +88,9 @@ between networks.
 **Azure use:** A VNet is configured with address space, and its subnets
 allocate address ranges from that space.
 
+![Uploading image.png…]()
+
+
 ## 3. VNet --- Azure Virtual Network
 
 A **Virtual Network (VNet)** is Azure's logically isolated private
