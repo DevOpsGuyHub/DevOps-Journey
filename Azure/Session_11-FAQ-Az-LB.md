@@ -1,6 +1,7 @@
 # Azure Load Balancer — Questions
 
-Basic Questions
+**
+Basic Questions**
 
 1. What is Azure Load Balancer?
 2. What is the primary purpose of a load balancer?
@@ -18,8 +19,9 @@ Basic Questions
 14. What is the purpose of a Standard Load Balancer?
 15. Does Azure Load Balancer automatically scale backend virtual machines?
 
-Intermediate Questions
 
+**Intermediate Questions
+**
 1. Explain the complete traffic flow through Azure Load Balancer.
 2. How does Azure Load Balancer select a backend instance?
 3. What is hash-based distribution?
@@ -36,7 +38,8 @@ Intermediate Questions
 14. Why does an inbound load-balancing rule not automatically guarantee outbound internet connectivity?
 15. What are the key differences between Azure Load Balancer and Application Gateway?
 
-Advanced and Tough Questions
+**
+Advanced and Tough Questions**
 
 1. How does Azure Load Balancer maintain flow consistency when traffic is distributed across multiple backend instances?
 2. Why might one backend VM receive significantly more traffic than another even when both are healthy?
@@ -59,8 +62,9 @@ Advanced and Tough Questions
 19. What is the impact of incorrect probe intervals or failure thresholds on application availability?
 20. How would you troubleshoot asymmetric routing or unexpected response-path behavior in a complex network architecture?
 
-Scenario-Based Questions
 
+**Scenario-Based Questions
+**
 1. You have three backend VMs behind a public Load Balancer. One VM stops responding. Describe what should happen and how you would verify it.
 2. Users can reach the frontend IP, but the application is unavailable. What would you check first?
 3. All backend VMs are healthy, but traffic is not evenly distributed. Is this necessarily a problem? Explain.
@@ -77,7 +81,9 @@ Scenario-Based Questions
 14. After enabling session persistence, one backend becomes overloaded. What might be causing this, and how would you investigate it?
 15. Your organization wants to add backend VMs automatically when traffic increases. Which additional Azure capability would you use?
 
-Expert-Level Design Questions
+
+**
+Expert-Level Design Questions**
 
 1. Design a highly available three-tier application using Azure Load Balancer. Explain the role of each component.
 2. Compare regional Load Balancer, cross-region Load Balancer, and Application Gateway in terms of architecture and use cases.
