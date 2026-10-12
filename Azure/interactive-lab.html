@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Azure Networking Fundamentals — Interactive Lab</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#172033;background:#f5f7fb}
+body{margin:0}header{background:#102a43;color:white;padding:28px max(18px,calc((100vw - 1050px)/2))}
+main{max-width:1050px;margin:auto;padding:20px;display:grid;gap:16px}
+h1{margin:0 0 8px;font-size:clamp(1.6rem,4vw,2.4rem)}h2{margin-top:0}
+p{line-height:1.55}.muted{color:#5b6575;font-size:.92rem}
+.card{background:white;border:1px solid #dce3ed;border-radius:14px;padding:18px;box-shadow:0 3px 12px #0d234008}
+label{display:block;font-weight:650;margin:12px 0 6px}
+input,select{font:inherit;padding:10px;border:1px solid #aebaca;border-radius:8px;width:100%;box-sizing:border-box;background:white}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}
+.stat{background:#eef5ff;border-radius:10px;padding:12px}.stat b{display:block;font-size:1.25rem;margin-top:4px;overflow-wrap:anywhere}
+.pill{display:inline-block;background:#e8f2ff;color:#174ea6;padding:4px 8px;border-radius:999px;font-size:.82rem}
+button{border:0;background:#155eef;color:white;font:inherit;padding:10px 14px;border-radius:8px;cursor:pointer}
+button.secondary{background:#e9eef6;color:#172033}
+.flow{display:grid;grid-template-columns:1fr;gap:8px;max-width:600px;margin:12px auto}
+.step{border:1px solid #cdd7e5;border-radius:10px;padding:12px;text-align:center;background:#f9fbff}
+.arrow{text-align:center;color:#52637a;font-weight:700}
+.good{border-color:#21845a;background:#edfbf3}.bad{border-color:#b42318;background:#fff0ef}
+pre{white-space:pre-wrap;background:#101828;color:#eef4ff;border-radius:10px;padding:12px;overflow:auto}
+footer{max-width:1050px;margin:auto;padding:0 20px 28px;color:#5b6575;font-size:.9rem}
+</style>
+</head>
+<body>
+<header>
+  <h1>Azure Networking Fundamentals</h1>
+  <p>Interactive lab: CIDR calculator + traffic flow explorer</p>
+  <span class="pill">Local-only demo</span>
+</header>
+<main>
+  <section class="card">
+    <h2>1. Live CIDR calculator</h2>
+    <p class="muted">IPv4 CIDR prefix change karo. Calculator network range, total addresses aur Azure subnet mein usable addresses estimate karega. Azure IPv4 subnet ke 5 reserved addresses count kiye gaye hain.</p>
+    <div class="grid">
+      <div><label for="ip">IPv4 address</label><input id="ip" value="10.0.1.0" autocomplete="off"></div>
+      <div><label for="prefix">CIDR prefix</label><select id="prefix"></select></div>
+    </div>
+    <div id="cidrError" class="muted" role="status" aria-live="polite"></div>
+    <div class="stats">
+      <div class="stat">Network address<b id="network">10.0.1.0</b></div>
+      <div class="stat">Broadcast address<b id="broadcast">10.0.1.255</b></div>
+      <div class="stat">Total IPv4 addresses<b id="total">256</b></div>
+      <div class="stat">Azure usable (subnet)<b id="usable">251</b></div>
+    </div>
+    <p class="muted">Note: This is a CIDR math demo, not an Azure deployment validator. The range must also fit inside your VNet and not overlap other subnets.</p>
+  </section>
+
+  <section class="card">
+    <h2>2. Explore a sample Azure traffic flow</h2>
+    <p class="muted">Source, destination, NSG outcome aur route select karo. Result dynamically explain karega why the sample connection succeeds or fails.</p>
+    <div class="grid">
+      <div><label for="source">Source</label><select id="source"><option value="web">Web VM — 10.0.1.4</option><option value="app">App VM — 10.0.2.4</option><option value="internet">Internet user</option></select></div>
+      <div><label for="dest">Destination</label><select id="dest"><option value="app">App VM — 10.0.2.4</option><option value="db">DB VM — 10.0.3.4</option><option value="web">Web VM — 10.0.1.4</option><option value="internet">Internet</option></select></div>
+      <div><label for="port">Destination port</label><select id="port"><option value="443">TCP 443 — HTTPS</option><option value="80">TCP 80 — HTTP</option><option value="1433">TCP 1433 — SQL Server</option><option value="22">TCP 22 — SSH</option></select></div>
+      <div><label for="nsg">Illustrative NSG decision</label><select id="nsg"><option value="allow">Allow</option><option value="deny">Deny</option></select></div>
+      <div><label for="route">Route status</label><select id="route"><option value="valid">Valid route exists</option><option value="missing">No valid route</option><option value="firewall">Route via firewall / appliance</option></select></div>
+      <div><label for="service">Destination service</label><select id="service"><option value="running">Running and listening</option><option value="stopped">Stopped / not listening</option></select></div>
+    </div>
+    <div class="flow" aria-live="polite">
+      <div class="step" id="s1">1. Source creates a connection</div><div class="arrow">↓</div>
+      <div class="step" id="s2">2. Route selection</div><div class="arrow">↓</div>
+      <div class="step" id="s3">3. NSG / firewall policy</div><div class="arrow">↓</div>
+      <div class="step" id="s4">4. Destination service</div>
+      <div class="step" id="result">Result will appear here.</div>
+    </div>
+    <button id="reset" class="secondary" type="button">Reset example</button>
+    <p class="muted">Simplified learning model: real Azure connectivity also depends on effective routes, NSGs at applicable scopes, firewall policy, return path, DNS, platform behavior, and the operating system. This lab does not query Azure.</p>
+  </section>
+
+  <section class="card">
+    <h2>3. Key concepts at a glance</h2>
+    <div class="grid">
+      <div><b>VNet</b><p>Private network address space and connectivity boundary.</p></div>
+      <div><b>Subnet</b><p>Logical segment of a VNet address range.</p></div>
+      <div><b>NIC</b><p>VM's virtual network interface, with IP configuration and MAC address.</p></div>
+      <div><b>Public IP</b><p>Globally routable address for supported public-facing connectivity.</p></div>
+      <div><b>Private IP</b><p>Address used within private network communication.</p></div>
+      <div><b>NSG</b><p>Filters inbound and outbound traffic using security rules.</p></div>
+      <div><b>Route Table</b><p>Resource that stores routes.</p></div>
+      <div><b>UDR</b><p>Custom route that influences the next hop.</p></div>
+    </div>
+  </section>
+</main>
+<footer>Educational demo only. It does not authenticate to Azure, change resources, or replace Azure Network Watcher and effective-route checks.</footer>
+<script>
+const prefix=document.getElementById('prefix');
+for(let p=8;p<=30;p++){const o=document.createElement('option');o.value=p;o.textContent='/'+p;if(p===24)o.selected=true;prefix.appendChild(o)}
+function parseIPv4(s){
+  const a=s.trim().split('.');
+  if(a.length!==4)return null;
+  const nums=a.map(x=>/^\d+$/.test(x)?Number(x):NaN);
+  if(nums.some(n=>!Number.isInteger(n)||n<0||n>255))return null;
+  return nums.reduce((v,n)=>((v*256)+n)>>>0,0)>>>0;
+}
+function ipString(n){return [n>>>24,(n>>>16)&255,(n>>>8)&255,n&255].join('.')}
+function calcCIDR(){
+  const err=document.getElementById('cidrError');
+  const n=parseIPv4(document.getElementById('ip').value), p=Number(prefix.value);
+  if(n===null){err.textContent='Enter a valid IPv4 address, e.g. 10.0.1.0';return}
+  // Use BigInt for accurate unsigned 32-bit range calculations.
+  const addr=BigInt(n), bits=32-p, total=2n**BigInt(bits);
+  const block=total, network=(addr/block)*block, broadcast=network+block-1n;
+  err.textContent='';
+  document.getElementById('network').textContent=ipString(Number(network));
+  document.getElementById('broadcast').textContent=ipString(Number(broadcast));
+  document.getElementById('total').textContent=total.toLocaleString('en-US');
+  const usable=p<=29?total-5n:(p===30?0n:0n);
+  document.getElementById('usable').textContent=(usable<0n?0n:usable).toLocaleString('en-US')+(p>=30?'*':'');
+  if(p>=30)err.textContent='Azure subnet note: /29 and smaller IPv4 subnets are not suitable for ordinary Azure VNet subnet deployment; the count is mathematical only.';
+}
+function setStep(id,text,ok=null){const e=document.getElementById(id);e.textContent=text;e.className='step'+(ok===true?' good':ok===false?' bad':'')}
+function flow(){
+ const s=document.getElementById('source').value,d=document.getElementById('dest').value,n=document.getElementById('nsg').value,r=document.getElementById('route').value,svc=document.getElementById('service').value,port=document.getElementById('port').value;
+ setStep('s1',`1. ${label(s)} → ${label(d)} (destination port ${port})`);
+ const routeOk=r!=='missing';
+ setStep('s2',r==='valid'?'2. Valid route selected':r==='firewall'?'2. Route points through firewall / appliance':'2. No valid route to destination',routeOk);
+ setStep('s3',n==='allow'?'3. Illustrative NSG decision: Allow':'3. Illustrative NSG decision: Deny',n==='allow');
+ setStep('s4',svc==='running'?'4. Destination service is listening':'4. Destination service is stopped / not listening',svc==='running');
+ let message,ok=false;
+ if(!routeOk)message='Connection fails: no valid route in this simplified scenario.';
+ else if(n==='deny')message='Connection fails: the selected NSG decision denies this traffic.';
+ else if(svc==='stopped')message='Network path is allowed in this example, but the destination application is not listening.';
+ else if(r==='firewall')message='Potentially successful: route goes via a firewall/appliance. Its policy and return path must also allow the flow.';
+ else {message='Potentially successful in this simplified model. Real Azure effective routes, all applicable NSGs/firewalls, return routing and OS settings must also permit it.';ok=true}
+ setStep('result',message,ok);
+}
+function label(v){return ({web:'Web VM (10.0.1.4)',app:'App VM (10.0.2.4)',db:'DB VM (10.0.3.4)',internet:'Internet'})[v]||v}
+['ip','prefix'].forEach(id=>document.getElementById(id).addEventListener('input',calcCIDR));
+['source','dest','port','nsg','route','service'].forEach(id=>document.getElementById(id).addEventListener('change',flow));
+document.getElementById('reset').addEventListener('click',()=>{
+ document.getElementById('source').value='web';document.getElementById('dest').value='app';document.getElementById('port').value='443';
+ document.getElementById('nsg').value='allow';document.getElementById('route').value='valid';document.getElementById('service').value='running';flow();
+});
+calcCIDR();flow();
+</script>
+</body>
+</html>
