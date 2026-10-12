@@ -23,7 +23,8 @@
 19. How many IPv4 addresses does Azure reserve in each subnet?
 20. What is the difference between static and dynamic private IP allocation?
 
-Intermediate Questions
+
+**Intermediate Questions**
 
 1. Explain how a VNet, subnet, NIC, and private IP address work together.
 2. What is the difference between a VNet address space and a subnet address range?
@@ -46,7 +47,8 @@ Intermediate Questions
 19. How can an Azure VM access the internet without having its own public IP address?
 20. What is the difference between Site-to-Site VPN and ExpressRoute at a high level?
 
-## Set 3: Advanced and Tough Questions
+
+**Advanced and Tough Questions**
 
 1. A VNet has the address space `10.0.0.0/16`. Explain how you would divide it into web, application, and database subnets without overlapping ranges.
 2. Why does a `/24` subnet provide 256 total IPv4 addresses but only 251 usable addresses in Azure?
@@ -69,7 +71,8 @@ Intermediate Questions
 19. How would you troubleshoot asymmetric routing in a network that uses an Azure Firewall or virtual appliance?
 20. How can Azure NAT Gateway provide outbound connectivity without assigning public IP addresses to individual VMs?
 
-## Set 4: Scenario-Based Questions
+
+**Scenario-Based Questions**
 
 1. A web VM at `10.0.1.4` cannot connect to a database VM at `10.0.2.4`. What would you check, and in what order?
 2. Two VMs are in the same VNet but cannot communicate. What are the possible causes?
@@ -92,7 +95,7 @@ Intermediate Questions
 19. Azure Network Watcher reports that traffic is blocked. How would you use this information to identify the responsible security rule?
 20. A network change causes several applications to lose connectivity. How would you isolate whether the issue is related to routes, NSGs, IP addressing, or the application itself?
 
-## Set 5: Expert-Level Design Questions
+**Expert-Level Design Questions**
 
 1. Design a secure Azure network architecture for a three-tier application with public web access, private application servers, and private database servers.
 2. Explain how you would plan CIDR ranges across multiple VNets, Azure regions, and on-premises networks to avoid address overlap.
