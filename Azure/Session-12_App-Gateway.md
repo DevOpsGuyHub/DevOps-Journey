@@ -1,274 +1,309 @@
 <div align="center">
 
 # Azure Application Gateway
-### Visual Deep-Dive • Architecture • Components • Security • Troubleshooting
 
 ![Azure](https://img.shields.io/badge/Microsoft_Azure-Application_Gateway-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)
 ![Layer 7](https://img.shields.io/badge/OSI-Layer%207-6A5ACD?style=for-the-badge)
-![Guide](https://img.shields.io/badge/Level-Fundamentals%20to%20Advanced-16825D?style=for-the-badge)
+![Guide](https://img.shields.io/badge/Level-Basic%20to%20Advanced-16825D?style=for-the-badge)
 
-**A practical, visual guide to Azure's web traffic load balancer**
+**Web traffic ko samajhne, route karne aur secure karne ke liye practical guide**
 
 </div>
 
 ---
 
-## At a glance
 
-Azure Application Gateway is a managed **Layer 7 web traffic load balancer**. It routes HTTP/HTTPS requests using information such as hostnames and URL paths. It also supports TLS termination, backend health probes, rewrites, redirects, and Web Application Firewall (WAF) capabilities on supported SKUs.
 
-| Requirement | Application Gateway feature |
+## Quick summary
+
+**Azure Application Gateway** ek Azure-managed **Layer 7 (Application Layer) web traffic load balancer** hai. Ye HTTP/HTTPS request ko samajh kar decide karta hai ki request kis backend server ya service tak jaani chahiye. Ye hostname aur URL path ke basis par routing, HTTPS/TLS termination, backend health checks, redirects, rewrites aur supported SKU par Web Application Firewall (WAF) provide kar sakta hai.
+
+| Aapko kya karna hai? | Application Gateway ka feature |
 |---|---|
-| Route `/api/*` separately from `/images/*` | Path-based routing |
-| Host multiple websites | Multi-site listeners |
-| Accept HTTPS traffic | HTTPS listener and certificate |
-| Avoid unhealthy backend targets | Health probes |
-| Inspect requests for common web attack patterns | WAF policy on WAF SKU |
-| Change supported HTTP headers or URL parts | Rewrite rules |
-| Redirect HTTP to HTTPS | Redirect configuration |
+| `/api/*` ko API servers par aur `/images/*` ko image servers par bhejna | Path-based routing |
+| Ek gateway se multiple domains host karna | Multi-site listeners |
+| Website par HTTPS enable karna | HTTPS listener aur TLS certificate |
+| Down backend server par traffic bhejne se bachna | Health probes |
+| Common web attacks ke request patterns inspect karna | WAF policy, supported WAF SKU par |
+| HTTP ko HTTPS par redirect karna | Redirect configuration |
+| Supported HTTP headers ya URL parts badalna | Rewrite rules |
 
-> **SKU note:** This guide focuses on Application Gateway v2 (Standard_v2 and WAF_v2). Microsoft retired the v1 SKU family on April 28, 2026. Verify current capabilities and limits in Microsoft Learn before deploying.
+> **SKU note:** Ye guide mainly Application Gateway v2 — `Standard_v2` aur `WAF_v2` — par focus karti hai. Microsoft ke current documentation ke mutabik v1 SKU family 28 April 2026 ko retire ho chuki hai. Deployment se pehle current SKU features, limits aur region availability Microsoft Learn par verify karein.
 
 ## Contents
 
-- [1. What is Application Gateway?](#1-what-is-application-gateway)
+- [1. Application Gateway kya hai?](#1-application-gateway-kya-hai)
 - [2. Official Microsoft diagrams](#2-official-microsoft-diagrams)
-- [3. Application Gateway vs Load Balancer](#3-application-gateway-vs-azure-load-balancer)
-- [4. Request flow](#4-request-flow)
-- [5. Components in detail](#5-components-in-detail)
-- [6. Routing patterns](#6-routing-patterns)
-- [7. TLS and certificates](#7-tls-and-certificates)
-- [8. WAF](#8-web-application-firewall-waf)
-- [9. Health probes](#9-health-probes-and-backend-health)
-- [10. Network, availability, and scaling](#10-network-availability-and-scaling)
-- [11. Practical example](#11-practical-example)
+- [3. Application Gateway vs Azure Load Balancer](#3-application-gateway-vs-azure-load-balancer)
+- [4. Ek request ka complete flow](#4-ek-request-ka-complete-flow)
+- [5. Saare important components](#5-saare-important-components)
+- [6. Routing ke common patterns](#6-routing-ke-common-patterns)
+- [7. HTTPS aur TLS ko samjhein](#7-https-aur-tls-ko-samjhein)
+- [8. WAF kya karta hai?](#8-waf-kya-karta-hai)
+- [9. Health probes aur backend health](#9-health-probes-aur-backend-health)
+- [10. Network, availability aur scaling](#10-network-availability-aur-scaling)
+- [11. Practical architecture example](#11-practical-architecture-example)
 - [12. Deployment checklist](#12-deployment-checklist)
-- [13. Troubleshooting](#13-troubleshooting)
-- [14. Best practices](#14-best-practices)
-- [15. Official references](#official-microsoft-references)
+- [13. Troubleshooting guide](#13-troubleshooting-guide)
+- [14. Production best practices](#14-production-best-practices)
+- [15. Important terms aur recap](#15-important-terms-aur-recap)
+- [Official Microsoft references](#official-microsoft-references)
 
 ---
 
-## 1. What is Application Gateway?
+## 1. Application Gateway kya hai?
 
-**Azure Application Gateway** is a managed application delivery controller (ADC) for web traffic. It acts as a single entry point and forwards accepted requests to configured backend targets.
+Socho aapki company ki ek website hai aur uske peeche multiple services chalti hain:
 
-Unlike a traditional Layer 4 load balancer, it can use HTTP-level information—such as the hostname or URL path—to decide where a request should go.
+- Main website / storefront
+- REST API
+- Images service
+- Admin portal
 
-### Example
+Aap nahi chahte ki har user ko alag-alag backend server ka address pata ho. Aap ek common entry point rakhna chahte ho, jo request dekh kar use sahi service tak bhej de. Azure Application Gateway ye kaam karta hai.
 
-A company hosts three application areas:
+### Simple example
 
-- `https://shop.contoso.com/` → storefront
-- `https://shop.contoso.com/api/*` → API service
-- `https://shop.contoso.com/images/*` → image service
+Maan lo website ka domain `shop.contoso.com` hai:
 
-Application Gateway can use one HTTPS listener and a path-based rule to send these requests to different backend pools.
+- `https://shop.contoso.com/` → website servers
+- `https://shop.contoso.com/api/orders` → API servers
+- `https://shop.contoso.com/images/logo.png` → image servers
 
-### Why Layer 7 matters
+Application Gateway hostname aur URL path ko dekh kar request ko correct backend pool tak route kar sakta hai.
 
-- **Layer 7:** understands web requests and can route by hostname and URL path.
-- **Regional service:** deployed into a virtual network and region.
-- **Managed service:** Azure manages the gateway infrastructure; you configure routing, backend targets, probes, security, and monitoring.
+### Layer 7 ka matlab kya hai?
 
-Application Gateway does not replace secure application code, authentication, patching, or a complete network-security design.
+Networking ko samajhne ke liye OSI model ke layers ka basic idea useful hai. Application Gateway **Layer 7**, yaani Application Layer par web request ke details ke saath kaam karta hai.
+
+- **Layer 4:** TCP/UDP connection, IP address aur port jaise network-level details par focus karta hai.
+- **Layer 7:** HTTP/HTTPS jaise application protocols ko samajh sakta hai. Isliye hostname, URL path aur supported HTTP attributes ke basis par routing possible hoti hai.
+
+### Application Gateway kya nahi hai?
+
+Ye aapki application ka replacement nahi hai. Ye application code ko secure likhne, user authentication/authorization, server patching ya data security ki responsibility khatam nahi karta. Ye web traffic ko receive, inspect (configured hone par), route aur manage karne wala managed service hai.
+
+### Kab use karna chahiye?
+
+Application Gateway tab useful hai jab aapko web traffic ke liye hostname/path-based routing, HTTPS termination, backend health checks ya WAF chahiye. Agar sirf TCP/UDP traffic ko distribute karna hai aur HTTP-level features ki zaroorat nahi hai, toh Azure Load Balancer zyada suitable ho sakta hai.
 
 ---
 
 ## 2. Official Microsoft diagrams
 
-The following diagrams are hosted by Microsoft Learn and embedded directly from the official documentation media URLs.
+Neeche diye gaye diagrams official Microsoft Learn documentation se directly embed kiye gaye hain.
 
-### Diagram A — Application Gateway components
+### Diagram A — Application Gateway ke components
 
 ![Official Microsoft Learn diagram: Application Gateway components](https://learn.microsoft.com/en-us/azure/application-gateway/media/application-gateway-components/application-gateway-components.png)
 
 <sub>Source: [Microsoft Learn — Application Gateway components](https://learn.microsoft.com/en-us/azure/application-gateway/application-gateway-components)</sub>
 
-**How to read the diagram:**
+**Diagram ko kaise samjhein?**
 
-1. **Frontend IP** is the gateway's entry address.
-2. **Listener** checks the incoming IP, port, protocol, and hostname configuration.
-3. **Rule** connects the listener to backend handling.
-4. **Backend pool** identifies destination servers.
-5. **Backend HTTP settings** define how the gateway connects to those servers.
-6. **Custom probe** monitors backend health.
-7. **Certificate** supports client-side TLS for an HTTPS listener.
+1. **Frontend IP** gateway ka entry address hota hai.
+2. **Listener** check karta hai ki incoming connection configured IP, port, protocol aur hostname se match karti hai ya nahi.
+3. **Routing rule** decide karta hai request ke saath aage kya karna hai.
+4. **Backend pool** destination servers/services ko identify karta hai.
+5. **Backend settings** batati hain ki gateway backend se kis protocol, port aur settings ke saath connect kare.
+6. **Health probe** check karti hai ki backend configured criteria ke hisaab se healthy hai ya nahi.
+7. **Certificate** HTTPS listener ke zariye client ke saath TLS connection establish karne mein use hota hai.
 
-### Diagram B — Routing configuration and path-based backends
+### Diagram B — Routing configuration
 
 ![Official Microsoft Learn diagram: Application Gateway configuration overview](https://learn.microsoft.com/en-us/azure/application-gateway/media/configuration-overview/configuration-overview1.png)
 
 <sub>Source: [Microsoft Learn — Application Gateway configuration overview](https://learn.microsoft.com/en-us/azure/application-gateway/configuration-overview)</sub>
 
-This diagram shows how listeners, routing rules, backend pools, backend settings, probes, and TLS trust settings fit together. Creating a backend pool or probe alone is not enough: the related settings must be associated with the relevant routing configuration.
+Is diagram ka key lesson ye hai ki sirf backend pool ya probe create karna enough nahi. Listener, rule, backend pool, backend settings aur probe ko sahi configuration mein associate bhi karna hota hai.
 
 ---
 
 ## 3. Application Gateway vs Azure Load Balancer
 
+Dono traffic distribute karte hain, lekin unka kaam karne ka layer aur decision-making alag hai.
+
 | Feature | Application Gateway | Azure Load Balancer |
 |---|---|---|
-| Primary layer | Layer 7 web routing | Layer 4 network-flow distribution |
-| Traffic | HTTP/HTTPS and supported web features | TCP/UDP flows |
-| Routing decisions | Hostname, URL path, supported HTTP attributes | Network flow, protocol, and ports |
-| TLS termination | Supported | Not its primary role |
-| WAF | Supported on WAF SKUs | No built-in Layer 7 WAF |
-| Typical use | Websites, APIs, multi-site routing | TCP/UDP workloads |
+| Main layer | Layer 7 — web/application traffic | Layer 4 — network flows |
+| Typical protocols | HTTP/HTTPS aur supported web features | TCP/UDP |
+| Routing decision | Hostname, URL path aur supported HTTP attributes | Network flow, protocol aur ports |
+| TLS termination | Supported | Iska primary purpose nahi |
+| Built-in WAF | Supported WAF SKU par | Layer 7 WAF built-in nahi |
+| Typical use | Websites, APIs, multi-site routing, web security | TCP/UDP workloads aur network-level distribution |
 
-Choose **Application Gateway** for web-aware routing, HTTPS handling, or WAF. Choose **Azure Load Balancer** for Layer 4 TCP/UDP distribution. The services can be combined in a larger design.
+**Simple rule:** Web request ko hostname/path ke basis par route karna hai toh Application Gateway consider karein. TCP/UDP flows distribute karne hain toh Azure Load Balancer consider karein. Complex architecture mein dono services ek saath bhi use ho sakti hain.
 
 ---
 
-## 4. Request flow
+## 4. Ek request ka complete flow
 
 ```mermaid
 flowchart TD
-    A["Client / Browser"] --> B["DNS resolves hostname"]
-    B --> C["Frontend IP + Listener"]
-    C --> D["TLS processing for HTTPS"]
-    D --> E{"WAF enabled?"}
-    E -->|Yes| F["Evaluate WAF policy"]
-    E -->|No| G["Routing rule"]
-    F --> H{"Request allowed?"}
-    H -->|Yes| G
-    H -->|Blocked| X["Block / log request"]
-    G --> I{"Routing type"}
-    I -->|Basic / hostname| J["Backend pool"]
-    I -->|URL path| K["Path-based backend selection"]
-    J --> L["Backend settings + health"]
+    A[Client / Browser] --> B[DNS hostname ko resolve karta hai]
+    B --> C[Frontend IP + Listener]
+    C --> D[HTTPS ho toh TLS processing]
+    D --> E{WAF enabled hai?}
+    E -->|Haan| F[WAF policy request inspect karti hai]
+    E -->|Nahi| G[Routing rule]
+    F --> H{Request allowed hai?}
+    H -->|Haan| G
+    H -->|Block| X[Request block / log]
+    G --> I{Routing type}
+    I -->|Basic / hostname| J[Backend pool select]
+    I -->|URL path| K[Path ke basis par backend select]
+    J --> L[Backend settings + health]
     K --> L
-    L --> M["Healthy backend processes request"]
-    M --> N["Response returns through gateway"]
+    L --> M[Healthy backend request process karta hai]
+    M --> N[Response gateway ke through client ko milta hai]
 ```
 
-### Step-by-step
+### Step-by-step explanation
 
-1. **DNS:** The client resolves the hostname to the gateway frontend address.
-2. **Listener:** The gateway accepts the connection if IP, port, protocol, and hostname match.
-3. **TLS:** For HTTPS, the gateway uses its configured certificate for the client-side TLS session.
-4. **WAF:** If configured, the request is evaluated against the WAF policy.
-5. **Routing:** The rule selects a backend pool or a path-based routing map.
-6. **Backend settings:** The gateway applies protocol, port, timeout, host handling, and other configured settings.
-7. **Health:** Normal requests are sent to eligible backend targets.
-8. **Response:** The backend response returns through the gateway to the client.
+1. **DNS lookup:** Browser `shop.contoso.com` ka address resolve karta hai. DNS record ko Application Gateway ke intended frontend IP par point karna chahiye.
+2. **Frontend IP:** Client gateway ke public ya private frontend address tak connection banata hai.
+3. **Listener:** Gateway incoming connection ka frontend IP, port, protocol aur configured hostname check karta hai. Matching listener hona zaroori hai.
+4. **TLS processing:** HTTPS listener par gateway configured certificate use karke client ke saath TLS session establish karta hai.
+5. **WAF inspection:** Agar WAF policy configured hai, toh request ko policy ke rules ke against evaluate kiya ja sakta hai.
+6. **Routing rule:** Rule decide karta hai request ko ek backend pool par bhejna hai, ya URL path ke hisaab se pool choose karna hai.
+7. **Backend settings:** Gateway selected backend se connect karne ke liye protocol, port, timeout, host handling aur doosri configured settings apply karta hai.
+8. **Backend health:** Normal traffic eligible/healthy backend targets ko bheja jaata hai.
+9. **Response:** Backend response gateway se wapas client tak jaata hai.
+
+Agar request fail ho rahi ho, toh isi sequence ko follow karke troubleshoot karna useful hai: DNS → frontend → listener → TLS/WAF → routing rule → backend settings → backend health → network rules → application.
 
 ---
 
-## 5. Components in detail
+## 5. Saare important components
 
-Core relationship:
+Overall relationship ko is tarah yaad rakhein:
 
-**Frontend → Listener → Request-routing rule → Backend pool + Backend settings → Healthy backend**
+**Frontend IP → Listener → Routing Rule → Backend Pool + Backend Settings → Healthy Backend**
 
-WAF, TLS configuration, probes, redirects, rewrites, networking, and diagnostics support this request path.
+TLS certificate, WAF, health probes, rewrites, redirects, networking aur diagnostics is flow ko secure, reliable aur manageable banane mein help karte hain.
 
 ### 5.1 Frontend IP configuration
 
-The frontend is the address clients connect to.
+Frontend IP wo address hai jahan client Application Gateway se connect karta hai.
 
-- **Public frontend:** for internet-facing applications.
-- **Private frontend:** for applications accessed over private network connectivity.
-- Supported combinations depend on the current SKU and deployment configuration.
+- **Public frontend:** internet se accessible web application ke liye.
+- **Private frontend:** internal users ya private network connectivity ke through access hone wali application ke liye.
+- Supported combinations aapke SKU, region aur deployment configuration par depend kar sakte hain.
 
-**Example:** `shop.contoso.com` resolves to the public frontend IP. Clients connect to the gateway, not directly to each backend VM.
+**Example:** `shop.contoso.com` public frontend IP par resolve hota hai. User gateway tak connect karta hai; ideally user ko backend VM ka direct address access karne ki zaroorat nahi hoti.
 
-A frontend IP alone does not make an application reachable. DNS, listeners, rules, network controls, and healthy backends must also be correct.
+Yaad rakhein: sirf frontend IP create karne se website accessible nahi hoti. DNS, listener, routing rule, network configuration aur healthy backend bhi sahi hone chahiye.
 
 ### 5.2 Frontend port
 
-The frontend port is where the listener accepts connections. Common examples are TCP `80` for HTTP and TCP `443` for HTTPS.
+Frontend port wo port hai jahan listener incoming connection accept karta hai. Common examples:
 
-The client-facing port is separate from the backend port, which is configured in backend settings.
+- TCP `80` — HTTP
+- TCP `443` — HTTPS
+
+Client-facing frontend port aur backend port alag ho sakte hain. Backend port ko backend settings mein configure kiya jaata hai.
 
 ### 5.3 Listener
 
-A **listener** checks incoming connections against configured properties:
+**Listener gateway ka entry-point configuration hai.** Ye check karta hai incoming connection configured properties se match karti hai ya nahi:
 
 - Frontend IP configuration
-- Port and protocol
-- Hostname, if configured
-- TLS certificate for HTTPS
+- Port aur protocol
+- Hostname, agar configured ho
+- HTTPS ke liye TLS certificate
 
-**Basic listener:** for a straightforward site-to-backend mapping.
+**Basic listener:** ek simple website ya hostname ko handle karne ke liye.
 
-**Multi-site listener:** matches a configured hostname so multiple websites can share gateway infrastructure.
+**Multi-site listener:** configured hostname match karke ek gateway par multiple websites host karne ke liye.
 
-**Example:** An HTTPS listener for `api.contoso.com` accepts matching requests on port `443`.
+**Example:** `api.contoso.com` ke liye port `443` par HTTPS listener configure ho sakta hai.
 
-A listener accepts traffic; the associated routing rule determines what happens next.
+Listener traffic accept karne ka decision leta hai; uske baad associated routing rule decide karta hai request ko kahan bhejna hai.
 
 ### 5.4 TLS/SSL certificate
 
-For HTTPS, the gateway presents a certificate to the client. The certificate should cover the hostname users access.
+HTTPS use karte waqt gateway client ko certificate present karta hai. Certificate ko us hostname ke liye valid hona chahiye jise user access kar raha hai.
 
-Plan for hostname coverage, expiry/renewal, secure private-key handling, and supported certificate integration options.
+Certificate plan karte waqt ye cheezein check karein:
 
-The client-facing certificate and backend server certificate have different roles. If the gateway connects to a backend over HTTPS, backend certificate validation and trust configuration must also be correct.
+- Certificate mein sahi hostname/SAN coverage ho.
+- Certificate expire na ho; renewal process plan ho.
+- Private key securely handle ki jaaye.
+- Certificate import/integration ka method current Azure requirements ke mutabik ho.
+
+**Important:** Client-facing certificate aur backend server ka certificate alag roles rakhte hain. Agar gateway backend se HTTPS par connect karta hai, toh backend certificate trust aur hostname validation bhi sahi configure honi chahiye.
 
 ### 5.5 Request-routing rule
 
-A rule connects a listener to backend behavior.
+Routing rule listener ko backend handling ke saath connect karta hai.
 
-- **Basic rule:** sends matching requests to one backend pool using associated backend settings.
-- **Path-based rule:** selects backend pools/settings according to the URL path.
-- **Redirect rule behavior:** can redirect requests where supported.
+- **Basic rule:** matching request ko ek backend pool aur uski backend settings ke through bhejta hai.
+- **Path-based rule:** URL path ke basis par different backend pools/settings choose kar sakta hai.
+- **Redirect configuration:** supported setup mein client ko doosre URL ya protocol par redirect kar sakti hai.
 
-**Example:** `/api/*` requests go to the API pool; other requests use the default website pool.
+**Example:** `/api/*` requests API pool par aur baaki requests default website pool par jaati hain.
 
 ### 5.6 Backend pool
 
-The backend pool identifies destinations that can serve requests. Supported targets can include Azure VMs, Virtual Machine Scale Set instances, IP addresses, FQDNs, and supported App Service or other backend targets.
+Backend pool un destinations ki list hai jo application request serve kar sakte hain. Supported configuration ke mutabik targets mein Azure VMs, Virtual Machine Scale Set instances, IP addresses, FQDNs, aur supported App Service ya doosre backend targets ho sakte hain.
 
-| Example target | Role |
+| Example target | Meaning |
 |---|---|
 | `10.0.2.4` | Storefront VM 1 |
 | `10.0.2.5` | Storefront VM 2 |
-| `api.contoso.internal` | API backend |
+| `api.contoso.internal` | API backend ka hostname |
 
-Targets must be reachable from the gateway and configured for the intended protocol, port, host handling, and health probe.
+Backend target gateway se network ke through reachable hona chahiye. Protocol, port, host handling aur health probe configuration bhi us backend ke saath match karni chahiye.
 
 ### 5.7 Backend settings (HTTP settings)
 
-Backend settings define how the gateway connects to a selected backend. Depending on configuration, they can include:
+Backend settings batati hain ki Application Gateway selected backend se **kaise connect karega**. Configuration ke hisaab se inmein ye cheezein ho sakti hain:
 
-- Backend protocol: HTTP or HTTPS
+- Backend protocol: HTTP ya HTTPS
 - Backend port
 - Request timeout
-- Hostname or host-header override
+- Hostname ya host-header override
 - Cookie-based session affinity
-- Backend TLS validation and trusted root certificates
-- Custom probe association
-- Connection draining and other supported behaviors
+- Backend TLS validation aur trusted root certificates
+- Custom health probe association
+- Supported connection draining aur related behavior
 
-**Example:** The client connects to the gateway over HTTPS on port `443`; the gateway terminates that TLS session and creates a separate HTTPS connection to the backend on port `443`.
+**Example:** Client gateway ko HTTPS port `443` par request bhejta hai. Gateway client-side TLS terminate karke backend se port `443` par ek separate HTTPS connection bana sakta hai.
 
-Client-to-gateway TLS and gateway-to-backend TLS are separate. If the backend protocol is HTTP, that segment is not TLS-encrypted.
+Client-to-gateway TLS aur gateway-to-backend TLS do separate connections hain. Agar backend protocol HTTP hai, toh gateway aur backend ke beech wala segment TLS-encrypted nahi hota.
 
 ### 5.8 Health probe
 
-A health probe checks whether a backend responds according to configured criteria. Settings may include protocol, hostname, path such as `/health`, port, interval, timeout, unhealthy threshold, and expected response codes.
+Health probe ek configured check hai jo dekhti hai ki backend expected tareeke se response de raha hai ya nahi. Probe mein ye settings ho sakti hain:
 
-If a VM repeatedly fails the configured probe, it can be marked unhealthy and excluded from normal request distribution.
+- Protocol
+- Port
+- Hostname
+- Path, jaise `/health`
+- Check interval aur timeout
+- Unhealthy threshold
+- Expected HTTP response codes/status range
 
-**Good practice:** The endpoint should represent the application's ability to serve requests. A probe that always returns success can conceal real failures. A custom probe must be associated with the relevant backend settings and routing configuration.
+Agar backend baar-baar probe fail kare, toh gateway us target ko unhealthy mark kar sakta hai aur normal request distribution se exclude kar sakta hai.
+
+**Achhi practice:** Probe endpoint application ki actual readiness ko reflect kare. Agar endpoint hamesha success return karta hai, toh real application failure chhup sakti hai. Custom probe ko relevant backend settings ke saath correctly associate karna zaroori hai.
 
 ### 5.9 Path-based routing map
 
-Path-based routing sends requests to different backend pools according to the URL path.
+Path-based routing URL ke path ke basis par request ko alag backend pool tak bhejti hai.
 
 | Request path | Destination |
 |---|---|
 | `/` | Website pool |
 | `/api/*` | API pool |
 | `/images/*` | Image pool |
-| `/admin/*` | Admin pool with appropriate access controls |
+| `/admin/*` | Admin pool — appropriate access controls ke saath |
 
-Path matching uses the URL path, not query parameters. Requests that don't match configured patterns use the configured default backend behavior.
+Path matching URL path par hoti hai, query parameters par nahi. Agar request configured path patterns se match nahi karti, toh configured default backend behavior apply hota hai.
 
 ### 5.10 Multi-site hosting
 
-Different hostnames can share a gateway, with listeners and rules configured for each site.
+Alag hostnames ko ek gateway par host kiya ja sakta hai. Iske liye relevant hostname ke listeners aur routing rules configure kiye jaate hain.
 
 ```text
 www.contoso.com   → Website pool
@@ -276,77 +311,84 @@ api.contoso.com   → API pool
 shop.contoso.com  → Shopping pool
 ```
 
-DNS, listener hostname configuration, and HTTPS certificate coverage must align.
+DNS records, listener hostname aur HTTPS certificate coverage ek doosre ke saath align hone chahiye.
 
 ### 5.11 Web Application Firewall (WAF) policy
 
-On supported WAF SKUs, WAF inspects HTTP/HTTPS requests for patterns associated with common web attacks, such as SQL injection and cross-site scripting.
+Supported WAF SKU par WAF HTTP/HTTPS requests ko common web attack patterns ke liye inspect kar sakta hai. Examples mein SQL injection aur cross-site scripting (XSS) se associated patterns shamil hain.
 
-A policy can include managed rules, custom rules, exclusions, and supported operating modes.
+WAF policy mein configuration ke mutabik managed rules, custom rules, exclusions aur supported operating modes ho sakte hain.
 
-| Mode | Behavior |
+| Mode | Kya hota hai? |
 |---|---|
-| Detection | Logs matching requests for investigation |
-| Prevention | Can block requests matching configured blocking conditions |
+| Detection | Matching requests ko investigation ke liye log karta hai; policy behavior ko test karne mein useful |
+| Prevention | Configured blocking conditions match hone par request block kar sakta hai |
 
-**Safer rollout:** test the policy, review logs for false positives, use narrowly scoped exclusions only when justified, and enable prevention after validation. WAF does not replace secure code, authentication, authorization, patching, or monitoring.
+**Safer rollout:** Pehle policy test karein, logs mein false positives dekhein, sirf justified aur narrow exclusions banayein, phir validation ke baad Prevention mode enable karein. WAF secure application code, authentication, authorization, patching aur monitoring ka replacement nahi hai.
 
 ### 5.12 Rewrite rules
 
-Rewrite rules modify supported request/response headers and URL components as traffic passes through the gateway.
+Rewrite rules traffic gateway se pass hote waqt supported request/response headers aur URL ke supported parts ko modify kar sakte hain.
 
-**Example:** Add or update a supported HTTP header before forwarding a request.
+**Example:** Backend ko forward karne se pehle supported HTTP header add ya update karna.
 
-Routing decides where a request goes; rewriting changes supported parts of the request or response.
+Routing ka sawal hai: **request kahan jaayegi?** Rewrite ka sawal hai: **request/response ke supported parts ko kaise badla jaayega?**
 
 ### 5.13 Redirect configuration
 
-A redirect tells the client to request another URL or protocol. A common example is redirecting `http://shop.contoso.com` to `https://shop.contoso.com`.
+Redirect client ko kisi doosre URL ya protocol par dobara request bhejne ke liye kehta hai. Common example HTTP website ko HTTPS par redirect karna hai:
 
-A redirect usually causes a new client request; a rewrite changes supported request details inside gateway processing.
+`http://shop.contoso.com` → `https://shop.contoso.com`
+
+Redirect mein aam taur par browser ek nayi request karta hai. Rewrite gateway ke traffic processing ke dauraan supported request/response details ko modify karta hai. Dono ka behavior alag hai.
 
 ### 5.14 Cookie-based session affinity
 
-Session affinity can use a gateway-managed cookie to keep a client associated with the same backend, where enabled and supported. This can help applications that keep local session state, but it is not a substitute for resilient session design. Shared session storage or stateless authentication may be more robust when backend instances change or fail.
+Session affinity enable hone par gateway-managed cookie client ko same backend ke saath associated rakhne mein help kar sakti hai, jahan supported aur configured ho.
 
-### 5.15 Autoscaling and capacity
+Ye un applications mein useful ho sakti hai jo local server session state rakhti hain. Lekin ye resilient session design ka replacement nahi. Shared session storage ya stateless authentication zyada robust ho sakte hain, khaaskar jab backend instances scale ya fail hote hain.
 
-Application Gateway supports autoscaling in supported configurations. Gateway scaling is separate from backend scaling: a gateway can have sufficient capacity while application servers are overloaded.
+### 5.15 Autoscaling aur capacity
 
-Plan for expected request volume, concurrency, backend capacity, load testing, monitoring, and scaling limits.
+Supported configurations mein Application Gateway autoscaling support karta hai. Gateway ka scale aur backend application ka scale do alag cheezein hain. Gateway ke paas sufficient capacity ho sakti hai, lekin backend servers overload ho sakte hain.
 
-### 5.16 Availability zones and high availability
+Expected request volume, concurrent connections, backend capacity, load testing, monitoring aur applicable scaling limits ko saath mein plan karein.
 
-Where supported by the SKU and region, zone redundancy can improve resilience to a zone-level failure.
+### 5.16 Availability zones aur high availability
 
-High availability also depends on multiple healthy backend instances, accurate probes, resilient application design, DNS/certificate management, network configuration, and monitoring.
+SKU aur region support ke hisaab se zone redundancy, zone-level failure ke against resilience improve kar sakti hai.
 
-### 5.17 Dedicated subnet and networking
+Lekin high availability sirf gateway setting se guarantee nahi hoti. Multiple healthy backend instances, accurate health probes, resilient application design, DNS/certificate management, correct networking aur monitoring bhi zaroori hain.
 
-Application Gateway is deployed into a **dedicated subnet** in a VNet. Follow current Azure requirements for subnet sizing, NSGs, supported routes, and resource placement.
+### 5.17 Dedicated subnet aur networking
 
-Verify:
-- The subnet is dedicated to Application Gateway.
-- NSGs allow required gateway operations and backend traffic.
-- UDRs, if used, follow supported routing requirements.
-- Backend IPs/FQDNs are reachable and resolve correctly.
-- Private clients have a valid network path to a private frontend.
+Application Gateway ko VNet ke andar ek **dedicated subnet** mein deploy kiya jaata hai. Subnet sizing, NSGs, supported routes aur resource placement ke liye current Azure requirements follow karein.
 
-### 5.18 Diagnostics, logs, and metrics
+Checklist:
 
-Azure Monitor integration helps investigate request handling, backend health, performance, and WAF activity. Depending on SKU and enabled diagnostic categories, telemetry can include access logs, performance logs, WAF logs, backend health, and capacity metrics.
+- Subnet Application Gateway ke liye dedicated ho.
+- NSGs gateway operations aur required backend traffic ko allow karein.
+- User-defined routes (UDRs), agar use kiye gaye hain, supported routing requirements follow karein.
+- Backend IPs/FQDNs reachable hon aur hostname resolution sahi ho.
+- Private frontend use kar rahe ho toh clients ke paas us tak pahunchne ka valid private network path ho.
 
-Configure diagnostic settings to send logs to a suitable destination, such as Log Analytics, when centralized analysis is needed.
+### 5.18 Diagnostics, logs aur metrics
+
+Azure Monitor integration se request handling, backend health, performance aur WAF activity investigate karne mein help milti hai. Enabled diagnostic categories aur configuration ke hisaab se access logs, performance logs, WAF logs, backend health aur capacity metrics available ho sakte hain.
+
+Centralized analysis ke liye diagnostic settings ke through logs ko Log Analytics jaise suitable destination par bhejne ka plan bana sakte hain. Logs aur alerts configure kiye bina production issues ka root cause nikalna mushkil ho sakta hai.
 
 ---
 
-## 6. Routing patterns
+## 6. Routing ke common patterns
 
-### Basic routing
+### 6.1 Basic routing
 
-One listener sends matching requests to one backend pool using associated backend settings.
+Ek listener matching requests ko associated backend pool par bhejta hai. Simple website ya service ke liye ye straightforward setup hota hai.
 
-### Path-based routing
+### 6.2 Path-based routing
+
+Ek hostname par multiple application areas host kiye ja sakte hain:
 
 ```text
 https://shop.contoso.com/          → Storefront
@@ -354,7 +396,9 @@ https://shop.contoso.com/api/      → API
 https://shop.contoso.com/images/   → Image service
 ```
 
-### Multi-site routing
+### 6.3 Multi-site routing
+
+Alag hostnames ke liye alag routing:
 
 ```text
 www.contoso.com   → Storefront
@@ -362,197 +406,258 @@ api.contoso.com   → API
 admin.contoso.com → Admin portal
 ```
 
-**Remember:** DNS directs the client to the gateway. The listener and routing rule determine how the gateway handles the request.
+**Yaad rakhein:** DNS client ko gateway tak pahunchata hai. Listener incoming request ko match karta hai. Routing rule decide karta hai gateway request ko kaise handle karega.
 
 ---
 
-## 7. TLS and certificates
+## 7. HTTPS aur TLS ko samjhein
 
-### TLS termination at the gateway
+TLS client aur service ke beech data ko encrypted connection par transfer karne mein help karta hai. Application Gateway ke setup mein do separate TLS connections ho sakte hain: client se gateway, aur gateway se backend.
+
+### Option A — Gateway par TLS termination, backend tak HTTP
 
 ```text
 Client -- HTTPS --> Application Gateway -- HTTP --> Backend
 ```
 
-The gateway decrypts the client connection and forwards HTTP to the backend. The gateway-to-backend segment is not TLS-encrypted. Use this only when security requirements and network design permit it.
+Gateway client-side TLS connection terminate/decrypt karta hai aur backend ko HTTP request forward karta hai. Gateway-to-backend segment TLS-encrypted nahi hota. Is approach ko tabhi use karein jab aapki security requirements aur network design iski permission dete hon.
 
-### End-to-end TLS
+### Option B — End-to-end TLS
 
 ```text
 Client -- HTTPS --> Application Gateway -- HTTPS --> Backend
 ```
 
-The gateway terminates client-side TLS and creates a separate TLS connection to the backend. Configure backend certificate trust and hostname validation correctly.
+Gateway client-side TLS terminate karta hai aur backend ke saath ek alag TLS connection establish karta hai. Backend certificate trust aur hostname validation sahi configure honi chahiye.
 
-- **Listener certificate:** presented to the client.
-- **Backend certificate:** presented by the backend when HTTPS is used.
-- **Trusted root configuration:** establishes trust in applicable backend TLS configurations.
-- **Hostname/SNI:** must align with backend certificate and hostname settings.
+Important terms:
 
-Frontend HTTPS does not automatically mean the gateway-to-backend connection is encrypted.
+- **Listener certificate:** client ko present kiya jaane wala certificate.
+- **Backend certificate:** HTTPS use hone par backend server ka certificate.
+- **Trusted root configuration:** applicable backend TLS configuration mein certificate chain par trust establish karne ke liye.
+- **Hostname/SNI:** backend hostname settings aur certificate ke names aapas mein match hone chahiye.
+
+**Common misunderstanding:** Frontend par HTTPS enable karne ka matlab ye nahi ki gateway se backend tak bhi traffic automatically encrypted hai. Backend settings mein protocol check karein.
 
 ---
 
-## 8. Web Application Firewall (WAF)
+## 8. WAF kya karta hai?
 
-WAF provides HTTP-aware inspection on supported Application Gateway WAF SKUs. Depending on policy and rule coverage, it can detect or block request patterns associated with common web attacks.
+Web Application Firewall (WAF) HTTP-aware security layer hai. Supported Application Gateway WAF SKU par ye configured policy ke hisaab se request patterns inspect karke common web attacks se bachav mein help kar sakta hai.
 
 ### Recommended rollout
 
-1. Select a suitable WAF SKU and policy.
-2. Review managed and custom rules.
-3. Test in detection mode where appropriate.
-4. Review logs for false positives.
-5. Add narrowly scoped exclusions only when justified.
-6. Enable prevention after validation.
-7. Monitor and tune the policy as the application evolves.
+1. Required features ke hisaab se suitable WAF SKU aur policy choose karein.
+2. Managed rules aur custom rules ko review karein.
+3. Jahan suitable ho, pehle Detection mode mein behavior test karein.
+4. Logs dekh kar false positives aur legitimate requests ki blocking identify karein.
+5. Sirf zaroorat hone par narrowly scoped exclusions add karein.
+6. Validation ke baad Prevention mode enable karein.
+7. Application badalne ke saath logs monitor aur policy tune karte rahein.
 
-WAF is one layer of defense, not a guarantee against every attack.
+WAF har attack ko rokne ki guarantee nahi deta. Secure code, identity controls, patching, least privilege aur monitoring phir bhi zaroori hain.
 
 ---
 
-## 9. Health probes and backend health
+## 9. Health probes aur backend health
 
-| Component | Question it answers |
+In components ka role mix na karein:
+
+| Component | Ye kis sawaal ka jawab deta hai? |
 |---|---|
-| Listener | Should the gateway accept this connection? |
-| Routing rule | Which backend behavior applies? |
-| Backend settings | How should the gateway connect? |
-| Health probe | Is the backend responding as expected? |
-| Backend pool | Which destinations are configured? |
-| WAF policy | Does the request match configured security rules? |
+| Listener | Kya gateway is connection ko accept kare? |
+| Routing rule | Request ke liye kaunsa backend behavior apply hoga? |
+| Backend settings | Gateway backend se kaise connect kare? |
+| Health probe | Kya backend configured check ke hisaab se healthy hai? |
+| Backend pool | Kaunse destinations configured hain? |
+| WAF policy | Kya request configured security rules match karti hai? |
 
-If a backend is unhealthy, check the probe protocol/port/path/hostname, application listener, expected response, backend NSG and OS firewall, gateway-to-backend connectivity, and TLS certificate validation.
+### Backend unhealthy dikhe toh kya check karein?
 
----
+- Probe protocol aur port application listener se match karte hain?
+- Probe path, hostname aur expected response correct hain?
+- Backend application actually run kar rahi hai?
+- Backend NSG aur operating-system firewall required traffic allow karte hain?
+- Gateway se backend tak network route/reachability sahi hai?
+- HTTPS backend ke certificate aur trust settings valid hain?
+- Custom probe correct backend settings ke saath associated hai?
 
-## 10. Network, availability, and scaling
-
-### Deployment sequence
-
-1. Plan the VNet and dedicated Application Gateway subnet.
-2. Select a supported SKU and availability configuration.
-3. Configure public or private frontend.
-4. Create listeners and TLS certificates.
-5. Define backend pools and backend settings.
-6. Configure probes and associate them correctly.
-7. Create routing rules and path maps.
-8. Configure WAF if required.
-9. Point DNS to the intended frontend.
-10. Validate NSGs, routes, backend reachability, and TLS.
-11. Enable logs, metrics, and alerts.
-12. Test normal operation, unhealthy backends, and expected traffic load.
-
-### Network security principles
-
-- Keep backend resources private unless public access is explicitly required.
-- Allow only required gateway-to-backend traffic.
-- Avoid exposing backend management ports publicly.
-- Follow current requirements for the gateway subnet.
-- Verify backend FQDN resolution.
-- Ensure private clients have network connectivity to private frontends.
+Probe endpoint ko sirf “server alive” nahi, balki application ki readiness ke liye design karein. Lekin health endpoint ko itna complex bhi na banayein ki unrelated dependency ki temporary issue poori service ko unnecessarily unhealthy kar de.
 
 ---
 
-## 11. Practical example
+## 10. Network, availability aur scaling
 
-A company has a storefront, API, and image service. Users connect over HTTPS while backend services remain on private IPs.
+### Deployment ka recommended order
+
+1. VNet aur dedicated Application Gateway subnet plan karein.
+2. Required features aur region support ke hisaab se SKU/availability configuration choose karein.
+3. Public ya private frontend configure karein.
+4. Listeners aur TLS certificates create karein.
+5. Backend pools aur backend settings define karein.
+6. Health probes configure karein aur sahi association verify karein.
+7. Routing rules aur path maps create karein.
+8. Requirement ho toh WAF policy configure karein.
+9. DNS ko intended frontend par point karein.
+10. NSGs, routes, backend reachability aur TLS validate karein.
+11. Logs, metrics aur alerts enable karein.
+12. Normal operation, unhealthy backend behavior aur expected traffic load test karein.
+
+### Network security ke principles
+
+- Backends ko private rakhein, jab tak public access ki clear requirement na ho.
+- Sirf required gateway-to-backend traffic allow karein.
+- Backend management ports ko public internet par expose karne se bachein.
+- Gateway subnet ke current requirements follow karein.
+- Backend FQDN resolution verify karein.
+- Private frontend ke liye client network se valid connectivity ensure karein.
+
+### Gateway scaling vs backend scaling
+
+Gateway aur backend dono capacity bottleneck ban sakte hain. Monitoring mein gateway capacity ke saath backend CPU/memory, request latency, errors aur application-specific metrics bhi dekhein. Load test ke bina production traffic ke liye capacity assumptions par depend na karein.
+
+---
+
+## 11. Practical architecture example
+
+Maan lo ek e-commerce company ke paas storefront, API aur image service hai. Users HTTPS ke through connect karte hain, jabki backend services private IP ranges mein rakhi jaati hain.
 
 ```mermaid
 flowchart TB
-    U["Internet users"] --> DNS["shop.contoso.com / DNS"]
-    DNS --> AGW["Application Gateway<br/>Public frontend :443"]
-    AGW --> L["HTTPS listener + certificate"]
-    L --> WAF["WAF policy"]
-    WAF --> R{"URL path rule"}
-    R -->|"/"| WEB["Website pool<br/>10.0.2.0/24"]
-    R -->|"/api/*"| API["API pool<br/>10.0.3.0/24"]
-    R -->|"/images/*"| IMG["Image pool<br/>10.0.4.0/24"]
-    WEB --> H1["Probe + backend settings"]
-    API --> H2["Probe + backend settings"]
-    IMG --> H3["Probe + backend settings"]
+    U[Internet users] --> DNS[shop.contoso.com / DNS]
+    DNS --> AGW[Application Gateway<br/>Public frontend :443]
+    AGW --> L[HTTPS listener + certificate]
+    L --> WAF[WAF policy]
+    WAF --> R{URL path rule}
+    R -->|/| WEB[Website pool<br/>10.0.2.0/24]
+    R -->|/api/*| API[API pool<br/>10.0.3.0/24]
+    R -->|/images/*| IMG[Image pool<br/>10.0.4.0/24]
+    WEB --> H1[Probe + backend settings]
+    API --> H2[Probe + backend settings]
+    IMG --> H3[Probe + backend settings]
 ```
 
-| URL | Rule | Backend |
+| URL | Routing rule | Backend |
 |---|---|---|
 | `https://shop.contoso.com/` | Default path | Website pool |
 | `https://shop.contoso.com/api/orders` | `/api/*` | API pool |
 | `https://shop.contoso.com/images/logo.png` | `/images/*` | Image pool |
 
-If the API backend becomes unhealthy, the probe can mark that target unhealthy. If every API target is unhealthy, `/api/*` requests may fail even while the storefront remains healthy. Separate pools and probes help isolate failures between application components.
+### Agar API fail ho jaaye toh?
+
+Agar API backend probe fail karta hai, toh gateway us target ko unhealthy mark kar sakta hai. Agar API pool ke saare targets unhealthy hain, toh `/api/*` requests fail ho sakti hain, chahe storefront healthy ho. Separate backend pools aur probes application ke different parts ke failures ko isolate karne mein help karte hain.
+
+Ye architecture conceptual example hai. Actual IP ranges, NSGs, ports, SKU, DNS, certificates aur WAF rules ko apne environment ke mutabik design karein.
 
 ---
 
 ## 12. Deployment checklist
 
-| Area | Verify |
+Production deploy karne se pehle is checklist ko review karein.
+
+| Area | Kya verify karna hai? |
 |---|---|
-| SKU | Supports required routing, WAF, scaling, and availability features |
-| VNet/subnet | Dedicated subnet, correct region, suitable size |
-| Frontend | Public/private choice matches access requirements |
-| DNS | Hostname resolves to the intended frontend |
-| Listener | IP, port, protocol, hostname, and certificate are correct |
-| Routing rule | Basic, multi-site, or path-based behavior matches design |
-| Backend pool | Targets are registered and reachable |
-| Backend settings | Protocol, port, host handling, timeout, TLS trust are correct |
-| Probe | Accurately represents backend readiness |
-| WAF | Policy is tested, monitored, and tuned |
-| Network security | NSGs/firewalls allow only required traffic |
-| Observability | Logs, metrics, and alerts are enabled |
-| Capacity | Gateway and backend tiers can handle expected demand |
+| SKU | Required routing, WAF, scaling aur availability features support hote hain? |
+| VNet/subnet | Dedicated subnet, correct region aur sufficient subnet size hai? |
+| Frontend | Public/private selection access requirements se match karti hai? |
+| DNS | Hostname intended frontend ko resolve karta hai? |
+| Listener | IP, port, protocol, hostname aur certificate correct hain? |
+| Routing rule | Basic, multi-site ya path-based behavior design ke mutabik hai? |
+| Backend pool | Targets configured aur reachable hain? |
+| Backend settings | Protocol, port, host handling, timeout aur TLS trust sahi hain? |
+| Probe | Probe backend ki real readiness ko represent karti hai? |
+| WAF | Policy test, monitor aur tune ki gayi hai? |
+| Network security | NSGs/firewalls required traffic allow karte hain aur unnecessary traffic block hai? |
+| Observability | Logs, metrics aur alerts enabled hain? |
+| Capacity | Gateway aur backend tiers expected load handle kar sakte hain? |
 
 ---
 
-## 13. Troubleshooting
+## 13. Troubleshooting guide
 
-### Website does not open
-Check DNS → frontend IP → listener port/protocol/hostname → certificate → routing rule → backend health → NSGs/firewalls → application listener.
+### Problem: Website open nahi ho rahi
 
-### Backend is unhealthy
-Check probe protocol, port, path, hostname, expected response, application listener, backend network rules, and backend TLS certificate validation.
+Is order mein check karein:
 
-### One path works but another fails
-Check path patterns, rule association, default backend behavior, backend pool mapping, backend settings, probe health, and WAF logs.
+1. DNS sahi frontend IP par resolve ho raha hai?
+2. Frontend IP aur public/private connectivity sahi hai?
+3. Listener correct port, protocol aur hostname par configured hai?
+4. HTTPS hai toh certificate valid aur hostname ke liye correct hai?
+5. Routing rule correct backend pool se associated hai?
+6. Backend pool mein healthy targets hain?
+7. NSGs, firewalls aur routes gateway-to-backend traffic allow karte hain?
+8. Backend application expected port par listen kar rahi hai?
 
-### HTTPS works for one hostname but not another
-Check DNS, listener hostname, certificate coverage and expiry, multi-site routing, and listener-to-rule association.
+### Problem: Backend unhealthy show ho raha hai
 
-### Backend-related gateway error
-Check backend health, reachability, port, host header, backend protocol, certificate trust, application logs, and gateway access/performance logs.
+Probe protocol, port, path, hostname aur expected response check karein. Phir backend application listener, network rules, gateway-to-backend connectivity aur HTTPS certificate validation verify karein.
 
-**Recommended diagnostic order:**
+### Problem: Ek URL path work karta hai, doosra fail
+
+Path pattern, path rule association, default backend behavior, backend pool mapping, backend settings, probe health aur WAF logs check karein. URL path ki spelling aur expected path structure bhi verify karein.
+
+### Problem: Ek hostname par HTTPS work karta hai, doosre par nahi
+
+DNS record, listener hostname, certificate coverage/expiry, multi-site listener configuration aur listener-to-rule association check karein.
+
+### Problem: Backend-related gateway error aa raha hai
+
+Backend health, reachability, port, host header, backend protocol, certificate trust, application logs aur Application Gateway access/performance logs inspect karein.
+
+### Recommended diagnostic sequence
 
 `DNS → Frontend → Listener → TLS/WAF → Routing rule → Backend settings → Backend health → Network security → Application logs`
 
----
-
-## 14. Best practices
-
-- Use Application Gateway when HTTP-aware routing or WAF is required.
-- Follow current guidance for a dedicated, correctly sized subnet.
-- Keep backends private unless public access is explicitly needed.
-- Evaluate end-to-end TLS and validate backend certificates.
-- Build health endpoints that reflect real application readiness.
-- Use separate backend pools/probes for distinct services where appropriate.
-- Test path-based and multi-site routing before production.
-- Tune WAF policies and monitor false positives.
-- Enable diagnostics, metrics, and alerts.
-- Plan gateway capacity and backend scaling together.
-- Validate DNS, NSGs, routes, certificates, and application listeners.
-- Check Microsoft Learn for current SKU-specific capabilities and limits.
+Ek waqt par ek layer validate karna random settings change karne se zyada effective hota hai.
 
 ---
 
-## 15. Key takeaways
+## 14. Production best practices
 
-- Application Gateway is a Layer 7 web traffic load balancer.
-- Listeners accept matching connections; routing rules decide how requests are handled.
-- Backend pools define destinations; backend settings define gateway-to-backend connections.
-- Health probes determine which targets are considered healthy.
-- Frontend TLS and backend TLS are separate configuration decisions.
-- WAF is available on supported WAF SKUs and requires a suitable policy.
-- Application Gateway and Azure Load Balancer solve different problems and can be combined.
-- High availability depends on healthy backends, correct network controls, and resilient application design.
+- Application Gateway tab choose karein jab HTTP-aware routing, HTTPS handling ya WAF ki zaroorat ho.
+- Dedicated aur correctly sized subnet ke liye current Microsoft guidance follow karein.
+- Backends ko private rakhein jab tak public access required na ho.
+- End-to-end TLS ki requirement evaluate karein aur backend certificate validation correctly configure karein.
+- Aise health endpoints banayein jo application readiness ko realistically reflect karein.
+- Different services ke liye separate backend pools/probes use karne par consider karein.
+- Production se pehle path-based aur multi-site routing test karein.
+- WAF policy tune karein aur false positives monitor karein.
+- Diagnostics, metrics aur actionable alerts enable karein.
+- Gateway aur backend scaling ko ek saath plan karein.
+- DNS, NSGs, routes, certificates aur application listeners ko regularly validate karein.
+- SKU-specific capabilities aur limits ke liye current Microsoft Learn documentation check karein.
+- Deployment changes ko document karein aur rollback plan rakhein.
+
+---
+
+## 15. Important terms aur recap
+
+| Term | Simple meaning |
+|---|---|
+| Frontend IP | Client gateway tak jis address par connect karta hai |
+| Listener | Incoming connection ko configured IP/port/protocol/hostname se match karta hai |
+| Routing rule | Request ke liye backend handling decide karta hai |
+| Backend pool | Backend servers/services ki list |
+| Backend settings | Gateway backend se kis tarah connect kare, ye define karti hain |
+| Health probe | Backend ko configured criteria ke against check karti hai |
+| TLS termination | Gateway client-side encrypted TLS connection ko terminate karta hai |
+| Path-based routing | URL path ke basis par backend choose karna |
+| Multi-site routing | Alag hostnames ke liye routing configure karna |
+| WAF | Web request patterns inspect/block karne wali security layer |
+| Rewrite | Supported request/response header ya URL part modify karna |
+| Redirect | Client ko doosre URL/protocol par nayi request karne ko kehna |
+| Session affinity | Supported configuration mein client ko same backend se associated rakhna |
+
+### Sabse important baatein
+
+- Application Gateway Layer 7 web traffic load balancer hai.
+- Listener connection accept/match karta hai; routing rule batata hai request ko kaise handle karna hai.
+- Backend pool destinations define karta hai; backend settings gateway-to-backend connection define karti hain.
+- Health probes backend targets ki health assess karti hain.
+- Frontend TLS aur backend TLS alag configuration decisions hain.
+- WAF supported WAF SKU par available hai aur use carefully configure/tune karna hota hai.
+- Azure Application Gateway aur Azure Load Balancer different problems solve karte hain; architecture ke mutabik dono saath use ho sakte hain.
+- High availability ke liye healthy backends, correct network controls, monitoring aur resilient application design zaroori hain.
 
 ---
 
@@ -570,7 +675,5 @@ Check backend health, reachability, port, host header, backend protocol, certifi
 ---
 
 <div align="center">
-
-**Azure Application Gateway · Visual learning and deployment reference**
 
 </div>
